@@ -48,7 +48,7 @@ persentase = (selisih / pred_klasik[0]) * 100
 
 # --- 1. Prediksi Energi ---
 st.subheader("Proyeksi Transisi Energi")
-energy_type = st.selectbox("Pilih Jenis Energi:", ['solar', 'wind', 'coal', 'natural_gas'])
+energy_type = st.selectbox("Pilih Jenis Energi:", ['solar', 'wind', 'coal', 'natural_gas', 'hydrogen'])
 
 # Cek apakah kolom tersedia di DataFrame
 if energy_type in df.columns:
