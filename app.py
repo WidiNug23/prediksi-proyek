@@ -48,23 +48,28 @@ persentase = (selisih / pred_klasik[0]) * 100
 
 # --- 1. Prediksi Energi ---
 st.subheader("Proyeksi Transisi Energi")
-energy_type = st.selectbox("Pilih Jenis Energi:", ['solar', 'wind', 'coal', 'natural_gas', 'hydrogen'])
 
-# Cek apakah kolom tersedia di DataFrame
-if energy_type in df.columns:
-    model_path = f'models/classic_{energy_type}.pkl'
-    # Pastikan model tersedia, jika tidak gunakan model_klasik sebagai fallback
-    model_energy = joblib.load(model_path) if os.path.exists(model_path) else model_klasik
+# Pastikan daftar opsi sesuai kolom CSV
+opsi_energi = ['solar', 'wind', 'coal', 'natural_gas', 'hydro_power', 'geothermal']
+energy_type = st.selectbox("Pilih Jenis Energi:", opsi_energi)
 
+model_path = f'models/classic_{energy_type}.pkl'
+
+if os.path.exists(model_path):
+    model_energy = joblib.load(model_path)
+    
+    # Generate tahun untuk proyeksi (2025-2060)
+    tahun_prediksi = np.array(range(2025, 2061))
+    # Penting: reshape menjadi (n, 1) karena model dilatih dengan 1 fitur (tahun)
+    prediksi_kapasitas = model_energy.predict(tahun_prediksi.reshape(-1, 1))
+    
     chart_data = pd.DataFrame({
-        'Tahun': np.concatenate([df['tahun'].values, np.array(range(2025, 2061))]),
-        'Kapasitas': np.concatenate([df[energy_type].values, model_energy.predict(np.array(range(2025, 2061)).reshape(-1, 1))])
+        'Tahun': np.concatenate([df['tahun'].values, tahun_prediksi]),
+        'Kapasitas': np.concatenate([df[energy_type].values, prediksi_kapasitas])
     })
     st.line_chart(chart_data.set_index('Tahun'))
 else:
-    st.warning(f"Data historis untuk '{energy_type}' belum tersedia dalam dataset.")
-    # Logika alternatif jika data tidak ada, misalnya menampilkan pesan atau grafik kosong
-    st.info("Silakan tambahkan data historis ke dalam file 'data/energy_data.csv' untuk melihat proyeksi hidrogen.")
+    st.warning(f"Model untuk '{energy_type}' belum dilatih. Silakan jalankan training script terlebih dahulu.")
 
 # --- 2. Analisis Produktivitas Pertanian ---
 st.subheader("Analisis Perbandingan Produktivitas Pertanian")
