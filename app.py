@@ -105,4 +105,4 @@ else:
 
 # --- 4. Kesimpulan ---
 st.divider()
-st.info("* **PLTS**: Surya | **PLTB**: Bayu | **H2 Hijau**: Hidrogen berbasis EBT | **MW**: Megawatt | **EBT**: Energi Baru Terbarukan")
+st.info("* **PLTS**: Pembangkit Listrik Tenaga Surya | **PLTB**: Pembangkit Listrik Tenaga Bayu | **MW**: Megawatt | **H2 Hijau**: Hidrogen berbasis EBT | **EBT**: Energi Baru Terbarukan")
