@@ -60,13 +60,13 @@ col2.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
 
 with st.expander("Penjelasan Metrik & Analisis"):
     st.write(f"""
-    **Ton/Ha (Ton per Hektar)**
+    * **Ton/Ha (Ton per Hektar):**
     Satuan produktivitas lahan yang menunjukkan hasil panen dalam satu hektar. Semakin tinggi angka ini, semakin efisien penggunaan lahan pertanian Anda.
 
-    **Peningkatan Produktivitas**
+    * **Peningkatan Produktivitas:**
     Sistem Kuantum mendeteksi potensi peningkatan sebesar **{persentase:.2f}%** dibandingkan model klasik. Persentase ini bersifat dinamis karena disesuaikan dengan volume investasi energi (MW).
 
-    **Latar Belakang Analisis**
+    * **Latar Belakang Analisis:**
     Hasil ini berbasis data historis (2014-2024) yang mensimulasikan bagaimana energi terbarukan (PLTS/PLTB) mendukung modernisasi irigasi dan mesin tani presisi.
     """)
 
@@ -90,7 +90,7 @@ st.subheader("Analisis Dampak Hidrogen Hijau")
 st.caption(f"Berdasarkan simulasi investasi PLTS **{st.session_state.solar} MW** dan PLTB **{st.session_state.wind} MW** didapatkan:")
 col_h1, col_h2, col_h3 = st.columns(3)
 col_h1.metric("Produksi H2 Hijau", f"{produksi_h2:.2f} Ton/Tahun")
-col_h2.metric("Potensi Ekonomi", f"Rp {potensi_ekonomi_h2:,.0f}")
+col_h2.metric("Potensi Ekonomi", f"Rp{potensi_ekonomi_h2:,.0f}")
 col_h3.metric("Status Kelayakan", "Potensial" if produksi_h2 > 100 else "Perlu Ekspansi")
 
 st.write("""
