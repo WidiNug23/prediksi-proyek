@@ -1,0 +1,7 @@
+streamlit
+pandas
+joblib
+numpy
+scikit-learn
+pennylane
+pennylane-lightning
