@@ -49,14 +49,25 @@ persentase = (selisih / pred_klasik[0]) * 100
 # --- 1. Prediksi Energi ---
 st.subheader("Proyeksi Transisi Energi")
 energy_type = st.selectbox("Pilih Jenis Energi:", ['solar', 'wind', 'coal', 'natural_gas', 'hydrogen'])
-model_path = f'models/classic_{energy_type}.pkl'
-model_energy = joblib.load(model_path) if os.path.exists(model_path) else model_klasik
 
-chart_data = pd.DataFrame({
-    'Tahun': np.concatenate([df['tahun'].values, np.array(range(2025, 2061))]),
-    'Kapasitas': np.concatenate([df[energy_type].values, model_energy.predict(np.array(range(2025, 2061)).reshape(-1, 1))])
-})
-st.line_chart(chart_data.set_index('Tahun'))
+# Perbaikan: Cek apakah kolom ada di DataFrame sebelum akses
+if energy_type in df.columns:
+    model_path = f'models/classic_{energy_type}.pkl'
+    # Pastikan model juga tersedia
+    if os.path.exists(model_path):
+        model_energy = joblib.load(model_path)
+        val_hist = df[energy_type].values
+        val_pred = model_energy.predict(np.array(range(2025, 2061)).reshape(-1, 1))
+        
+        chart_data = pd.DataFrame({
+            'Tahun': np.concatenate([df['tahun'].values, np.array(range(2025, 2061))]),
+            'Kapasitas': np.concatenate([val_hist, val_pred])
+        })
+        st.line_chart(chart_data.set_index('Tahun'))
+    else:
+        st.error(f"Model untuk {energy_type} belum tersedia (file {model_path} tidak ditemukan).")
+else:
+    st.warning(f"Data untuk kolom '{energy_type}' tidak ditemukan di file CSV. Pastikan nama kolom di CSV sesuai.")
 
 # --- 2. Analisis Produktivitas Pertanian ---
 st.subheader("Analisis Perbandingan Produktivitas Pertanian")
