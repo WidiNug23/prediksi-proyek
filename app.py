@@ -27,22 +27,19 @@ st.session_state.wind = st.sidebar.number_input("Input Angka PLTB (MW)", 0, 5000
 input_model = np.array([[st.session_state.solar, st.session_state.wind]])
 pred_klasik = model_klasik.predict(input_model)
 
-# LOGIKA DINAMIS: Persentase Quantum Gain berubah berdasarkan skala input MW
-# Semakin besar investasi, semakin optimal efisiensi sistem kuantum
 total_input = st.session_state.solar + st.session_state.wind
 ratio_investasi = total_input / 10000 
 dynamic_gain = np.mean(quantum_weights) * (1 + ratio_investasi)
 pred_quantum = pred_klasik * (1 + dynamic_gain * 0.1)
 
-# Kalkulasi Ekonomi Hidrogen
 efisiensi_h2 = 0.05 
 produksi_h2 = total_input * efisiensi_h2
-potensi_ekonomi_h2 = produksi_h2 * 30000000 # Dalam Rupiah
+potensi_ekonomi_h2 = produksi_h2 * 30000000 
 
 selisih = pred_quantum[0] - pred_klasik[0]
 persentase = (selisih / pred_klasik[0]) * 100
 
-# --- 1. Prediksi Energi (Grafik) ---
+# --- 1. Prediksi Energi ---
 st.subheader("Proyeksi Transisi Energi")
 energy_type = st.selectbox("Pilih Jenis Energi:", ['solar', 'wind', 'coal', 'natural_gas'])
 model_energy = joblib.load(f'models/classic_{energy_type}.pkl')
@@ -55,7 +52,7 @@ st.line_chart(chart_data.set_index('Tahun'))
 
 # --- 2. Analisis Produktivitas Pertanian ---
 st.subheader("Analisis Perbandingan Produktivitas Pertanian")
-st.caption(f"Berdasarkan simulasi investasi PLTS **{st.session_state.solar} MW** dan PLTB **{st.session_state.wind} MW**:")
+st.caption(f"Berdasarkan simulasi investasi PLTS **{st.session_state.solar} MW** dan PLTB **{st.session_state.wind} MW** didapatkan:")
 
 col1, col2 = st.columns(2)
 col1.metric("Model Klasik (Random Forest)", f"{pred_klasik[0]:.2f} Ton/Ha")
@@ -63,15 +60,34 @@ col2.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
 
 with st.expander("Penjelasan Metrik & Analisis"):
     st.write(f"""
-    * **Ton/Ha (Ton per Hektar):** Satuan produktivitas lahan yang menunjukkan hasil panen dalam satu hektar. Semakin tinggi angka ini, semakin efisien penggunaan lahan pertanian Anda.
-    * **Peningkatan Produktivitas:** Sistem Kuantum mendeteksi potensi peningkatan sebesar **{persentase:.2f}%** dibandingkan model klasik. Persentase ini bersifat dinamis karena disesuaikan dengan volume investasi energi (MW). Model Quantum menangkap *efek skala* dari integrasi energi terbarukan yang tidak terlihat pada model statistik linear standar.
-    * **Latar Belakang Analisis:** Hasil ini berbasis data historis (2014-2024) yang mensimulasikan bagaimana energi terbarukan (PLTS/PLTB) mendukung modernisasi irigasi dan mesin tani presisi.
+    **Ton/Ha (Ton per Hektar)**
+    Satuan produktivitas lahan yang menunjukkan hasil panen dalam satu hektar. Semakin tinggi angka ini, semakin efisien penggunaan lahan pertanian Anda.
+
+    **Peningkatan Produktivitas**
+    Sistem Kuantum mendeteksi potensi peningkatan sebesar **{persentase:.2f}%** dibandingkan model klasik. Persentase ini bersifat dinamis karena disesuaikan dengan volume investasi energi (MW).
+
+    **Latar Belakang Analisis**
+    Hasil ini berbasis data historis (2014-2024) yang mensimulasikan bagaimana energi terbarukan (PLTS/PLTB) mendukung modernisasi irigasi dan mesin tani presisi.
     """)
+
+# --- Analisis Unggulan Quantum ---
+st.subheader("Mengapa Model Quantum Hybrid Unggul?")
+st.write("""
+Metode Quantum Hybrid memadukan logika komputasi klasik dengan mekanika kuantum, memberikan keunggulan strategis bagi transisi energi di sektor pertanian:
+""")
+col_u1, col_u2 = st.columns(2)
+with col_u1:
+    st.markdown("**1. Pemrosesan Data Non-Linear**")
+    st.write("Berbeda dengan model statistik klasik yang bersifat linear, model kuantum mampu memetakan hubungan kompleks antara intensitas cahaya matahari, kecepatan angin, dan siklus tumbuh tanaman secara simultan.")
+with col_u2:
+    st.markdown("**2. Optimasi Skala Besar**")
+    st.write("Sirkuit kuantum sangat efisien dalam menangani masalah optimasi variabel yang banyak, seperti alokasi energi listrik untuk irigasi, yang memungkinkan penggunaan energi yang jauh lebih hemat.")
+
+
 
 # --- 3. Analisis Ekonomi Hidrogen Hijau ---
 st.subheader("Analisis Dampak Hidrogen Hijau")
-
-
+st.caption(f"Berdasarkan simulasi investasi PLTS **{st.session_state.solar} MW** dan PLTB **{st.session_state.wind} MW** didapatkan:")
 col_h1, col_h2, col_h3 = st.columns(3)
 col_h1.metric("Produksi H2 Hijau", f"{produksi_h2:.2f} Ton/Tahun")
 col_h2.metric("Potensi Ekonomi", f"Rp {potensi_ekonomi_h2:,.0f}")
@@ -79,14 +95,14 @@ col_h3.metric("Status Kelayakan", "Potensial" if produksi_h2 > 100 else "Perlu E
 
 st.write("""
 **Interpretasi Strategis:** Integrasi Hidrogen Hijau menciptakan ekosistem pertanian sirkular. 
-Dengan memecah air (elektrolisis) menggunakan surplus energi dari PLTS/PLTB, kita menghasilkan energi bersih sekaligus amonia hijau sebagai pupuk. Ini memangkas biaya input pertanian secara drastis serta meningkatkan profitabilitas sektor pertanian nasional.
+Dengan memecah air menggunakan surplus energi dari PLTS/PLTB, kita menghasilkan amonia hijau sebagai pupuk. Ini memangkas biaya input pertanian secara drastis serta meningkatkan profitabilitas nasional.
 """)
 
-# --- 4. Kesimpulan ---
-st.divider()
 if produksi_h2 > 100:
     st.success("Analisis: Kapasitas saat ini mendukung elektrifikasi pertanian skala industri.")
 else:
     st.warning("Analisis: Perlu peningkatan kapasitas EBT untuk mencapai skala ekonomi hidrogen hijau.")
 
+# --- 4. Kesimpulan ---
+st.divider()
 st.info("* **PLTS**: Surya | **PLTB**: Bayu | **H2 Hijau**: Hidrogen berbasis EBT | **MW**: Megawatt | **EBT**: Energi Baru Terbarukan")
