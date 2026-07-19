@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import joblib
 import numpy as np
-import os  # <--- INI BAGIAN YANG DITAMBAHKAN
+import os
+import matplotlib.pyplot as plt
 
 # Konfigurasi Halaman
 st.set_page_config(page_title="Dashboard Proyeksi Transisi Energi", layout="wide")
@@ -12,6 +13,7 @@ st.title("Dashboard Proyeksi Transisi Energi & Dampak Pertanian Indonesia 2060")
 # Load data & model
 df = pd.read_csv('data/energy_data.csv')
 model_klasik = joblib.load('models/model_pertanian.pkl')
+model_svm = joblib.load('models/model_svm.pkl') # <--- MEMUAT MODEL SVM
 quantum_weights = joblib.load('models/quantum_weights.pkl') 
 
 # --- Sidebar: Kontrol Kebijakan ---
@@ -32,6 +34,7 @@ st.session_state.hydrogen = st.sidebar.number_input("Input Angka Hydrogen Power 
 # --- Kalkulasi Prediksi & Hidrogen ---
 input_model = np.array([[st.session_state.solar, st.session_state.wind]])
 pred_klasik = model_klasik.predict(input_model)
+pred_svm = model_svm.predict(input_model) # <--- KALKULASI PREDIKSI SVM
 
 total_ebt = st.session_state.solar + st.session_state.wind + st.session_state.hydrogen
 ratio_investasi = total_ebt / 12000 
@@ -75,38 +78,38 @@ else:
 st.subheader("Analisis Perbandingan Produktivitas Pertanian")
 st.caption(f" Berdasarkan simulasi investasi PLTS **{st.session_state.solar} MW**, PLTB **{st.session_state.wind} MW**, dan Hydrogen Power Plant **{st.session_state.hydrogen} MW**:")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3) 
 col1.metric("Model Klasik (Random Forest)", f"{pred_klasik[0]:.2f} Ton/Ha")
-col2.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
+col2.metric("Model SVM", f"{pred_svm[0]:.2f} Ton/Ha") 
+col3.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
 
 with st.expander("Penjelasan Metrik & Analisis"):
+    st.write("Visualisasi posisi target investasi Anda terhadap batas keputusan SVM:")
+    
+    fig, ax = plt.subplots(figsize=(6, 3))
+    
+    # 1. Plot Data Historis
+    ax.scatter(df['solar'], df['wind'], color='gray', alpha=0.2, s=10, label='Historis')
+    
+    # 2. Plot Support Vectors (Statik dari model)
+    sv = model_svm.support_vectors_
+    ax.scatter(sv[:, 0], sv[:, 1], color='#FF4B4B', marker='o', s=30, label='Support Vectors', alpha=0.6)
+    
+    # 3. Plot Target Input (DINAMIS - Berubah seiring slider)
+    ax.scatter(st.session_state.solar, st.session_state.wind, color='blue', marker='X', s=100, label='Input Anda (Target)')
+    
+    ax.set_xlabel('PLTS (MW)', fontsize=9)
+    ax.set_ylabel('PLTB (MW)', fontsize=9)
+    ax.legend(fontsize=7, loc='upper right')
+    plt.tight_layout()
+    
+    st.pyplot(fig)
+    
     st.write(f"""
-    * **Ton/Ha (Ton per Hektar):**
-    Satuan produktivitas lahan yang menunjukkan hasil panen dalam satu hektar. Semakin tinggi angka ini, semakin efisien penggunaan lahan pertanian Anda.
-
-    * **Peningkatan Produktivitas:**
-    Sistem Kuantum mendeteksi potensi peningkatan sebesar **{persentase:.2f}%** dibandingkan model klasik. Persentase ini bersifat dinamis karena disesuaikan dengan volume investasi energi (MW).
-
-    * **Latar Belakang Analisis:**
-    Hasil ini berbasis data historis (2014-2024) yang mensimulasikan bagaimana energi terbarukan (PLTS/PLTB) mendukung modernisasi irigasi dan mesin tani presisi.
+    * **Status Dinamis:** Titik silang biru (X) pada grafik di atas merepresentasikan target investasi Anda saat ini. Posisi ini akan bergerak secara *real-time* mengikuti perubahan nilai pada slider di sidebar.
+    * **Peningkatan Produktivitas:** Sistem Kuantum mendeteksi peningkatan **{persentase:.2f}%**.
     """)
-
-st.subheader("Mengapa Model Quantum Hybrid Unggul?")
-st.write("""
-Metode Quantum Hybrid memadukan logika komputasi klasik dengan mekanika kuantum, memberikan keunggulan strategis bagi transisi energi di sektor pertanian:
-""")
-col_u1, col_u2 = st.columns(2)
-with col_u1:
-    st.markdown("**1. Pemrosesan Data Non-Linear**")
-    st.write("Berbeda dengan model statistik klasik yang bersifat linear, model kuantum mampu memetakan hubungan kompleks antara intensitas cahaya matahari, kecepatan angin, dan siklus tumbuh tanaman secara simultan.")
-with col_u2:
-    st.markdown("**2. Optimasi Skala Besar**")
-    st.write("Sirkuit kuantum sangat efisien dalam menangani masalah optimasi variabel yang banyak, seperti alokasi energi listrik untuk irigasi, yang memungkinkan penggunaan energi yang jauh lebih hemat.")
-
-
-
-
-
+    
 # --- 3. Analisis Ekonomi Hidrogen Hijau ---
 st.subheader("Analisis Dampak Hidrogen Hijau")
 col_h1, col_h2, col_h3 = st.columns(3)
