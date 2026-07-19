@@ -5,3 +5,5 @@ numpy
 scikit-learn
 pennylane
 pennylane-lightning
+matplotlib
+scikit-learn
