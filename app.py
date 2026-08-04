@@ -52,7 +52,6 @@ persentase = (selisih / pred_klasik[0]) * 100
 # --- 1. Prediksi Energi ---
 st.subheader("Proyeksi Transisi Energi")
 
-# Pastikan daftar opsi sesuai kolom CSV
 opsi_energi = ['solar', 'wind', 'coal', 'natural_gas', 'hydro_power', 'geothermal']
 energy_type = st.selectbox("Pilih Jenis Energi:", opsi_energi)
 
@@ -61,9 +60,7 @@ model_path = f'models/classic_{energy_type}.pkl'
 if os.path.exists(model_path):
     model_energy = joblib.load(model_path)
     
-    # Generate tahun untuk proyeksi (2025-2060)
     tahun_prediksi = np.array(range(2025, 2061))
-    # Penting: reshape menjadi (n, 1) karena model dilatih dengan 1 fitur (tahun)
     prediksi_kapasitas = model_energy.predict(tahun_prediksi.reshape(-1, 1))
     
     chart_data = pd.DataFrame({
@@ -84,32 +81,54 @@ col2.metric("Model SVM", f"{pred_svm[0]:.2f} Ton/Ha")
 col3.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
 
 with st.expander("Penjelasan Metrik & Analisis"):
-    st.write("Visualisasi posisi target investasi Anda terhadap batas keputusan SVM:")
+    st.write("Grafik visualisasi posisi target, data historis, dan support vektor:")
     
-    fig, ax = plt.subplots(figsize=(6, 3))
+    # Tanpa Plotly dan tanpa Checkbox rumit di grafik, menggunakan Matplotlib bersih
+    fig, ax = plt.subplots(figsize=(7, 4))
     
-    # 1. Plot Data Historis
-    ax.scatter(df['solar'], df['wind'], color='gray', alpha=0.2, s=10, label='Historis')
+    ax.scatter(df['solar'], df['wind'], color='gray', alpha=0.5, s=25, label='Historis')
     
-    # 2. Plot Support Vectors (Statik dari model)
     sv = model_svm.support_vectors_
-    ax.scatter(sv[:, 0], sv[:, 1], color='#FF4B4B', marker='o', s=30, label='Support Vectors', alpha=0.6)
+    ax.scatter(sv[:, 0], sv[:, 1], color='#FF4B4B', marker='o', s=50, label='Support Vectors', alpha=0.8)
     
-    # 3. Plot Target Input (DINAMIS - Berubah seiring slider)
-    ax.scatter(st.session_state.solar, st.session_state.wind, color='blue', marker='X', s=100, label='Input Anda (Target)')
+    ax.scatter(st.session_state.solar, st.session_state.wind, color='blue', marker='X', s=120, label='Input Anda (Target)')
     
     ax.set_xlabel('PLTS (MW)', fontsize=9)
     ax.set_ylabel('PLTB (MW)', fontsize=9)
-    ax.legend(fontsize=7, loc='upper right')
+    ax.legend(fontsize=7, loc='upper left')
     plt.tight_layout()
     
     st.pyplot(fig)
     
+    # st.markdown("### 🔍 Inspeksi Data Berdasarkan Pilihan")
+    # st.write("Pilih kategori di bawah ini untuk melihat detail angka lengkap dari masing-masing titik:")
+    
+    mode_pilihan = st.radio("Pilih Data yang Ingin Dilihat Angkanya:", 
+                           ["Detail Target Input Anda", "Detail Titik Historis", "Detail Support Vektor Saja"], 
+                           horizontal=True)
+    
+    if mode_pilihan == "Detail Target Input Anda":
+        df_target_detail = pd.DataFrame({
+            'Komponen': ['PLTS (Solar)', 'PLTB (Wind)', 'Hydrogen Power Plant'],
+            'Nilai (MW)': [st.session_state.solar, st.session_state.wind, st.session_state.hydrogen]
+        })
+        st.success("Berikut adalah angka detail dari titik Target Input (X) Anda saat ini:")
+        st.dataframe(df_target_detail, use_container_width=True)
+        
+    elif mode_pilihan == "Detail Titik Historis":
+        st.success("Berikut adalah angka detail dari seluruh Titik Historis (Abu-abu):")
+        st.dataframe(df, use_container_width=True)
+        
+    else:
+        df_sv_detail = pd.DataFrame(sv, columns=['PLTS (Solar) [MW]', 'PLTB (Wind) [MW]'])
+        df_sv_detail.index = [f"Support Vector {i+1}" for i in range(len(df_sv_detail))]
+        st.success("Berikut adalah angka detail dari titik-titik Support Vektor (Merah) yang menopang model SVM:")
+        st.dataframe(df_sv_detail, use_container_width=True)
+        
     st.write(f"""
-    * **Status Dinamis:** Titik silang biru (X) pada grafik di atas merepresentasikan target investasi Anda saat ini. Posisi ini akan bergerak secara *real-time* mengikuti perubahan nilai pada slider di sidebar.
     * **Peningkatan Produktivitas:** Sistem Kuantum mendeteksi peningkatan **{persentase:.2f}%**.
     """)
-    
+
 # --- 3. Analisis Ekonomi Hidrogen Hijau ---
 st.subheader("Analisis Dampak Hidrogen Hijau")
 col_h1, col_h2, col_h3 = st.columns(3)
