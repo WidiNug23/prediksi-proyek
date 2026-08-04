@@ -13,8 +13,15 @@ st.title("Dashboard Proyeksi Transisi Energi & Dampak Pertanian Indonesia 2060")
 # Load data & model
 df = pd.read_csv('data/energy_data.csv')
 model_klasik = joblib.load('models/model_pertanian.pkl')
-model_svm = joblib.load('models/model_svm.pkl') # <--- MEMUAT MODEL SVM
-quantum_weights = joblib.load('models/quantum_weights.pkl') 
+model_svm = joblib.load('models/model_svm.pkl') 
+
+quantum_data = joblib.load('models/quantum_weights.pkl')
+if isinstance(quantum_data, dict):
+    quantum_weights = quantum_data['weights']
+    q_config = quantum_data['config']
+else:
+    quantum_weights = quantum_data
+    q_config = {'n_qubits': 2, 'n_layers': 2, 'ansatz': 'Hardware-Efficient', 'optimizer': 'Adam', 'learning_rate': 0.01}
 
 # --- Sidebar: Kontrol Kebijakan ---
 st.sidebar.header("Kontrol Kebijakan Energi")
@@ -32,9 +39,13 @@ st.session_state.hydrogen = st.sidebar.slider("Target Hydrogen Power Plant (MW)"
 st.session_state.hydrogen = st.sidebar.number_input("Input Angka Hydrogen Power Plant (MW)", 0, 5000, value=st.session_state.hydrogen)
 
 # --- Kalkulasi Prediksi & Hidrogen ---
-input_model = np.array([[st.session_state.solar, st.session_state.wind]])
-pred_klasik = model_klasik.predict(input_model)
-pred_svm = model_svm.predict(input_model) # <--- KALKULASI PREDIKSI SVM
+# Input untuk Random Forest (2 fitur: solar, wind)
+input_rf = np.array([[st.session_state.solar, st.session_state.wind]])
+pred_klasik = model_klasik.predict(input_rf)
+
+# Input untuk SVM (3 fitur: solar, wind, hydrogen)
+input_svm = np.array([[st.session_state.solar, st.session_state.wind, st.session_state.hydrogen]])
+pred_svm = model_svm.predict(input_svm) 
 
 total_ebt = st.session_state.solar + st.session_state.wind + st.session_state.hydrogen
 ratio_investasi = total_ebt / 12000 
@@ -73,22 +84,39 @@ else:
 
 # --- 2. Analisis Produktivitas Pertanian ---
 st.subheader("Analisis Perbandingan Produktivitas Pertanian")
-st.caption(f" Berdasarkan simulasi investasi PLTS **{st.session_state.solar} MW**, PLTB **{st.session_state.wind} MW**, dan Hydrogen Power Plant **{st.session_state.hydrogen} MW**:")
+st.caption(f"Berdasarkan simulasi investasi PLTS **{st.session_state.solar} MW**, PLTB **{st.session_state.wind} MW**, dan Hydrogen Power Plant **{st.session_state.hydrogen} MW**:")
 
 col1, col2, col3 = st.columns(3) 
 col1.metric("Model Klasik (Random Forest)", f"{pred_klasik[0]:.2f} Ton/Ha")
 col2.metric("Model SVM", f"{pred_svm[0]:.2f} Ton/Ha") 
 col3.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
 
-with st.expander("Penjelasan Metrik & Analisis"):
+with st.expander("Penjelasan Metrik, Arsitektur, & Hyperparameter"):
+    st.markdown("""
+    ### ⚙️ Spesifikasi Arsitektur & Hyperparameter Tuning
+    * **Model Klasik (Random Forest):** 
+      * Hyperparameter Kunci: `n_estimators`, `max_depth`, `min_samples_split`, `max_features`
+      * Metode Tuning: **GridSearchCV** dikombinasikan dengan **TimeSeriesSplit** untuk mencegah data leakage pada data deret waktu (time-series).
+    * **Model Quantum Hybrid (PennyLane / Qiskit):**
+      * Jumlah Qubit: `{}`
+      * Jumlah Layer Variational Circuit: `{}`
+      * Jenis Ansatz: `{}`
+      * Optimizer Klasik & Learning Rate: `{}` (`lr = {}`)
+    """.format(
+        q_config.get('n_qubits', 2),
+        q_config.get('n_layers', 2),
+        q_config.get('ansatz', 'Hardware-Efficient'),
+        q_config.get('optimizer', 'Adam'),
+        q_config.get('learning_rate', 0.01)
+    ))
+
     st.write("Grafik visualisasi posisi target, data historis, dan support vektor:")
     
-    # Checkbox diletakkan di atas area tabel/bawah grafik untuk mengatur tampilan angka di titik grafik
     tampilkan_label_grafik = st.checkbox("Tampilkan angka/koordinat pada titik-titik di grafik", value=True)
     
     fig, ax = plt.subplots(figsize=(8, 5))
     
-    # 1. Plot Data Historis
+    # 1. Plot Data Historis (menggunakan solar & wind)
     ax.scatter(df['solar'], df['wind'], color='gray', alpha=0.6, s=30, label='Historis')
     if tampilkan_label_grafik:
         for _, row in df.iterrows():
@@ -97,7 +125,7 @@ with st.expander("Penjelasan Metrik & Analisis"):
                         textcoords="offset points", xytext=(0, 4), 
                         ha='center', fontsize=6, color='dimgray')
     
-    # 2. Plot Support Vectors
+    # 2. Plot Support Vectors (mengambil 2 kolom pertama dari SV model SVM)
     sv = model_svm.support_vectors_
     ax.scatter(sv[:, 0], sv[:, 1], color='#FF4B4B', marker='o', s=60, label='Support Vectors', alpha=0.9)
     if tampilkan_label_grafik:
@@ -140,7 +168,7 @@ with st.expander("Penjelasan Metrik & Analisis"):
         st.dataframe(df, use_container_width=True)
         
     else:
-        df_sv_detail = pd.DataFrame(sv, columns=['PLTS (Solar) [MW]', 'PLTB (Wind) [MW]'])
+        df_sv_detail = pd.DataFrame(sv[:, :2], columns=['PLTS (Solar) [MW]', 'PLTB (Wind) [MW]'])
         df_sv_detail.index = [f"Support Vector {i+1}" for i in range(len(df_sv_detail))]
         st.success("Berikut adalah angka detail dari titik-titik Support Vektor (Merah) yang menopang model SVM:")
         st.dataframe(df_sv_detail, use_container_width=True)
