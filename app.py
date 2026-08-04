@@ -93,7 +93,7 @@ col3.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
 
 with st.expander("Penjelasan Metrik, Arsitektur, & Hyperparameter"):
     st.markdown("""
-    ### ⚙️ Spesifikasi Arsitektur & Hyperparameter Tuning
+    ### Spesifikasi Arsitektur & Hyperparameter Tuning
     * **Model Klasik (Random Forest):** 
       * Hyperparameter Kunci: `n_estimators`, `max_depth`, `min_samples_split`, `max_features`
       * Metode Tuning: **GridSearchCV** dikombinasikan dengan **TimeSeriesSplit** untuk mencegah data leakage pada data deret waktu (time-series).
