@@ -83,15 +83,37 @@ col3.metric("Model Quantum Hybrid", f"{pred_quantum[0]:.2f} Ton/Ha")
 with st.expander("Penjelasan Metrik & Analisis"):
     st.write("Grafik visualisasi posisi target, data historis, dan support vektor:")
     
-    # Tanpa Plotly dan tanpa Checkbox rumit di grafik, menggunakan Matplotlib bersih
-    fig, ax = plt.subplots(figsize=(7, 4))
+    # Checkbox diletakkan di atas area tabel/bawah grafik untuk mengatur tampilan angka di titik grafik
+    tampilkan_label_grafik = st.checkbox("Tampilkan angka/koordinat pada titik-titik di grafik", value=True)
     
-    ax.scatter(df['solar'], df['wind'], color='gray', alpha=0.5, s=25, label='Historis')
+    fig, ax = plt.subplots(figsize=(8, 5))
     
+    # 1. Plot Data Historis
+    ax.scatter(df['solar'], df['wind'], color='gray', alpha=0.6, s=30, label='Historis')
+    if tampilkan_label_grafik:
+        for _, row in df.iterrows():
+            ax.annotate(f"({int(row['solar'])}, {int(row['wind'])})", 
+                        (row['solar'], row['wind']), 
+                        textcoords="offset points", xytext=(0, 4), 
+                        ha='center', fontsize=6, color='dimgray')
+    
+    # 2. Plot Support Vectors
     sv = model_svm.support_vectors_
-    ax.scatter(sv[:, 0], sv[:, 1], color='#FF4B4B', marker='o', s=50, label='Support Vectors', alpha=0.8)
-    
-    ax.scatter(st.session_state.solar, st.session_state.wind, color='blue', marker='X', s=120, label='Input Anda (Target)')
+    ax.scatter(sv[:, 0], sv[:, 1], color='#FF4B4B', marker='o', s=60, label='Support Vectors', alpha=0.9)
+    if tampilkan_label_grafik:
+        for pt in sv:
+            ax.annotate(f"SV:({pt[0]:.0f}, {pt[1]:.0f})", 
+                        (pt[0], pt[1]), 
+                        textcoords="offset points", xytext=(0, -10), 
+                        ha='center', fontsize=6, color='red', weight='bold')
+
+    # 3. Plot Target Input (X) Anda
+    ax.scatter(st.session_state.solar, st.session_state.wind, color='blue', marker='X', s=140, label='Input Anda (Target)')
+    if tampilkan_label_grafik:
+        ax.annotate(f"Target:({st.session_state.solar}, {st.session_state.wind})", 
+                    (st.session_state.solar, st.session_state.wind), 
+                    textcoords="offset points", xytext=(0, 10), 
+                    ha='center', fontsize=7, color='blue', weight='bold')
     
     ax.set_xlabel('PLTS (MW)', fontsize=9)
     ax.set_ylabel('PLTB (MW)', fontsize=9)
@@ -100,10 +122,8 @@ with st.expander("Penjelasan Metrik & Analisis"):
     
     st.pyplot(fig)
     
-    # st.markdown("### 🔍 Inspeksi Data Berdasarkan Pilihan")
-    # st.write("Pilih kategori di bawah ini untuk melihat detail angka lengkap dari masing-masing titik:")
-    
-    mode_pilihan = st.radio("Pilih Data yang Ingin Dilihat Angkanya:", 
+    st.markdown("---")
+    mode_pilihan = st.radio("Pilih Data yang Ingin Dilihat Angkanya dalam Tabel:", 
                            ["Detail Target Input Anda", "Detail Titik Historis", "Detail Support Vektor Saja"], 
                            horizontal=True)
     
