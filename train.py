@@ -9,10 +9,11 @@ from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 if not os.path.exists('models'):
     os.makedirs('models')
 
-# Load data
-df = pd.read_csv('data/energy_data.csv')
+# Load data hasil gabungan dengan hidrogen
+df = pd.read_csv('data/energy_data_with_hydrogen.csv')
 
-X_features = df[['solar', 'wind']]
+# Menambahkan fitur hidrogen baru dari data NLR ke dalam X_features
+X_features = df[['solar', 'wind', 'hydrogen_flow_rate', 'hydrogen_efficiency']].fillna(0)
 y_pertanian = df['produktivitas_pertanian']
 
 # TimeSeriesSplit untuk validasi data deret waktu
@@ -26,7 +27,7 @@ rf = RandomForestRegressor(random_state=42)
 param_grid_rf = {
     'n_estimators': [100, 200, 300, 500],
     'max_depth': [5, 10, 15, 20, None],
-    'min_samples_split': [2, 5, 10],     
+    'min_samples_split': [2, 5, 10],    
     'max_features': ['sqrt', 'log2', 1.0]        
 }
 
@@ -40,15 +41,19 @@ joblib.dump(best_rf, 'models/model_pertanian.pkl')
 print(f"Random Forest Terbaik: {grid_rf.best_params_}")
 print(f"Waktu Training Random Forest: {train_time_rf:.4f} detik")
 
-
 # --- 2. Pelatihan Model Energi Klasik ---
-targets = ['coal', 'natural_gas', 'hydro_power', 'geothermal', 'solar', 'wind']
-X_tahun = df[['tahun']]
+targets = ['coal', 'natural_gas', 'hydro_power', 'geothermal', 'solar', 'wind', 'hydrogen_flow_rate', 'hydrogen_efficiency' ]
 for target in targets:
     if target in df.columns:
-        model_energy = RandomForestRegressor(n_estimators=100, random_state=42)
-        model_energy.fit(X_tahun, df[target])
-        joblib.dump(model_energy, f'models/classic_{target}.pkl')
+        df_clean = df[['tahun', target]].dropna()
+        if not df_clean.empty:
+            X_tahun = df_clean[['tahun']]
+            y_target = df_clean[target]
+            
+            model_energy = RandomForestRegressor(n_estimators=100, random_state=42)
+            model_energy.fit(X_tahun, y_target)
+            joblib.dump(model_energy, f'models/classic_{target}.pkl')
+            print(f"Model klasik untuk '{target}' berhasil dilatih.")
 
 # --- 3. Konfigurasi Quantum Hybrid (QLSTM) ---
 quantum_config = {

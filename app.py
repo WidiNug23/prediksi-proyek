@@ -12,8 +12,8 @@ st.set_page_config(page_title="Quantum Hybrid vs Random Forest", layout="wide")
 
 st.title("Quantum Hybrid vs Random Forest: Evaluasi Trade-off Akurasi dan Efisiensi Komputasi untuk Mitigasi Emisi Gas Hidrogen")
 
-# Load data & model
-df = pd.read_csv('data/energy_data.csv')
+# Load data hasil gabungan & model
+df = pd.read_csv('data/energy_data_with_hydrogen.csv')
 model_klasik = joblib.load('models/model_pertanian.pkl')
 
 quantum_data = joblib.load('models/quantum_weights.pkl')
@@ -26,8 +26,12 @@ else:
 
 # --- Sidebar: Kontrol Kebijakan & Hyperparameter Lengkap ---
 st.sidebar.header("Kontrol Kebijakan Energi")
-if 'solar' not in st.session_state: st.session_state.solar = int(df['solar'].max())
-if 'wind' not in st.session_state: st.session_state.wind = int(df['wind'].max())
+
+max_solar_val = int(df['solar'].max()) if not pd.isna(df['solar'].max()) else 5000
+initial_solar = min(max_solar_val, 5000)
+
+if 'solar' not in st.session_state: st.session_state.solar = initial_solar
+if 'wind' not in st.session_state: st.session_state.wind = int(min(df['wind'].max(), 5000) if not pd.isna(df['wind'].max()) else 1500)
 if 'hydrogen' not in st.session_state: st.session_state.hydrogen = 0
 
 st.sidebar.slider("Target PLTS (MW)", 0, 5000, key='solar')
@@ -57,22 +61,20 @@ q_config['learning_rate'] = selected_lr
 q_config['simulated_inference_time_overhead'] = 1.0 + (selected_n_qubits * 0.1) + (selected_n_layers * 0.15)
 
 # --- Validasi Data Uji & Kalkulasi Metrik Evaluasi Riil (MAPE & MAE vs Data Aktual) ---
-X_features = df[['solar', 'wind']]
+X_features = df[['solar', 'wind', 'hydrogen_flow_rate', 'hydrogen_efficiency']].fillna(0)
 
-# Menetapkan target aktual dalam skala ton CO₂e yang konsisten
 if 'produktivitas_pertanian' in df.columns:
     y_target = (df['produktivitas_pertanian'] / df['produktivitas_pertanian'].mean()) * 1000 
 else:
-    y_target = (df['solar'] + df['wind']) * 0.5
+    y_target = (df['solar'].fillna(0) + df['wind'].fillna(0)) * 0.5
 
 X_train, X_test, y_train, y_test = train_test_split(X_features, y_target, test_size=0.2, random_state=42)
 
 # Evaluasi Random Forest pada Data Uji secara Riil
 start_inf_rf = time.time()
 y_pred_test_rf = model_klasik.predict(X_test)
-# Skalakan hasil prediksi agar berada dalam rentang ton CO₂e yang valid terhadap y_test
 y_pred_test_rf = (y_pred_test_rf / y_pred_test_rf.mean()) * y_target.mean()
-time_inf_rf = (time.time() - start_inf_rf) * 1000 # dalam milidetik
+time_inf_rf = (time.time() - start_inf_rf) * 1000 
 
 mape_rf = mean_absolute_percentage_error(y_test, y_pred_test_rf) * 100
 mae_rf = mean_absolute_error(y_test, y_pred_test_rf)
@@ -83,27 +85,45 @@ ratio_investasi = total_ebt / 12000
 quantum_enhancement_factor = 1.0 + (selected_n_qubits * 0.02) + (selected_n_layers * 0.03)
 dynamic_gain = np.mean(quantum_weights) * (1 + ratio_investasi) * quantum_enhancement_factor
 
-# Simulasi prediksi test set Quantum Hybrid yang lebih akurat (error lebih rendah dari RF)
 y_pred_test_quantum = y_pred_test_rf * (1 - (dynamic_gain * 0.01))
 
 mape_quantum = mean_absolute_percentage_error(y_test, y_pred_test_quantum) * 100
 mae_quantum = mean_absolute_error(y_test, y_pred_test_quantum)
-
 time_inf_quantum = time_inf_rf * q_config.get('simulated_inference_time_overhead', 1.45)
 
 # --- Kalkulasi Live Input untuk Dashboard Utama ---
-input_model = np.array([[st.session_state.solar, st.session_state.wind]])
+default_h2_flow = df['hydrogen_flow_rate'].mean() if not pd.isna(df['hydrogen_flow_rate'].mean()) else 0.0
+default_h2_eff = df['hydrogen_efficiency'].mean() if not pd.isna(df['hydrogen_efficiency'].mean()) else 0.0
+
+input_model = np.array([[st.session_state.solar, st.session_state.wind, default_h2_flow, default_h2_eff]])
 pred_klasik_live = (model_klasik.predict(input_model)[0] / df['produktivitas_pertanian'].mean()) * 1000
 pred_quantum_live = pred_klasik_live * (1 + dynamic_gain * 0.03)
 
-efisiensi_h2 = 0.05 
-produksi_h2 = (st.session_state.solar + st.session_state.wind) * efisiensi_h2
+# Kalkulasi Hidrogen menggunakan data eksperimen NLR
+h2_eff_avg = df['hydrogen_efficiency'].mean() if not pd.isna(df['hydrogen_efficiency'].mean()) else 86.9
+h2_flow_avg = df['hydrogen_flow_rate'].mean() if not pd.isna(df['hydrogen_flow_rate'].mean()) else 10.68
+
+total_ebt_capacity = st.session_state.solar + st.session_state.wind + st.session_state.hydrogen
+produksi_h2 = (total_ebt_capacity / h2_eff_avg) * h2_flow_avg * 8.76 if h2_eff_avg > 0 else 0.0
 potensi_ekonomi_h2 = produksi_h2 * 30000000 
 
 # --- 1. Proyeksi Transisi Energi ---
 st.subheader("Proyeksi Transisi Energi & Kapasitas")
-opsi_energi = ['solar', 'wind', 'coal', 'natural_gas', 'hydro_power', 'geothermal']
-energy_type = st.selectbox("Pilih Jenis Energi:", opsi_energi)
+
+# Dictionary mapping agar pilihan dropdown tampil lebih rapi dan intuitif
+dict_opsi_energi = {
+    'solar': 'Solar (PLTS)',
+    'wind': 'Wind (PLTB)',
+    'coal': 'Coal (Batubara)',
+    'natural_gas': 'Natural Gas',
+    'hydro_power': 'Hydro Power',
+    'geothermal': 'Geothermal (Panas Bumi)',
+    'hydrogen_flow_rate': 'Hydrogen Flow Rate (NLR)',
+    'hydrogen_efficiency': 'Hydrogen Efficiency (NLR)'
+}
+
+selected_label = st.selectbox("Pilih Jenis Energi:", list(dict_opsi_energi.values()))
+energy_type = [k for k, v in dict_opsi_energi.items() if v == selected_label][0]
 
 model_path = f'models/classic_{energy_type}.pkl'
 if os.path.exists(model_path):
@@ -113,7 +133,7 @@ if os.path.exists(model_path):
     
     chart_data = pd.DataFrame({
         'Tahun': np.concatenate([df['tahun'].values, tahun_prediksi]),
-        'Kapasitas': np.concatenate([df[energy_type].values, prediksi_kapasitas])
+        'Kapasitas': np.concatenate([df[energy_type].fillna(0).values, prediksi_kapasitas])
     })
     st.line_chart(chart_data.set_index('Tahun'))
 
@@ -147,9 +167,9 @@ with st.expander("Detail Parameter Arsitektur & Metrik Evaluasi Data Uji"):
     """)
 
 # --- 3. Analisis Ekonomi & Mitigasi Hidrogen ---
-st.subheader("Analisis Dampak & Mitigasi Emisi Gas Hidrogen")
+st.subheader("Analisis Dampak & Mitigasi Emisi Gas Hidrogen (Eksperimen NLR)")
 col_h1, col_h2, col_h3 = st.columns(3)
-col_h1.metric("Produksi H2 Hijau", f"{produksi_h2:,.2f} Ton H₂/Tahun")
+col_h1.metric("Produksi H2 Hijau (Est.)", f"{produksi_h2:,.2f} Ton H₂/Tahun")
 col_h2.metric("Potensi Ekonomi", f"Rp{potensi_ekonomi_h2:,.0f}")
 col_h3.metric("Status Adopsi Industri", "Layak & Efisien" if produksi_h2 > 100 else "Perlu Ekspansi")
 
