@@ -6,15 +6,15 @@ import os
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_absolute_error
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
 
 # Konfigurasi Halaman
 st.set_page_config(page_title="Quantum Hybrid vs Random Forest", layout="wide")
 
 st.title("Quantum Hybrid vs Random Forest: Evaluasi Trade-off Akurasi dan Efisiensi Komputasi untuk Mitigasi Emisi Gas Hidrogen")
 
-# Load data hasil gabungan & model
+# Load data hasil gabungan
 df = pd.read_csv('data/energy_data_with_hydrogen.csv')
-model_klasik = joblib.load('models/model_pertanian.pkl')
 
 quantum_data = joblib.load('models/quantum_weights.pkl')
 if isinstance(quantum_data, dict):
@@ -60,7 +60,7 @@ q_config['optimizer'] = selected_optimizer
 q_config['learning_rate'] = selected_lr
 q_config['simulated_inference_time_overhead'] = 1.0 + (selected_n_qubits * 0.1) + (selected_n_layers * 0.15)
 
-# --- Validasi Data Uji & Kalkulasi Metrik Evaluasi Riil (MAPE & MAE vs Data Aktual) ---
+# --- Validasi Data Uji & Training Dinamis Berdasarkan Hyperparameter Sidebar ---
 X_features = df[['solar', 'wind', 'hydrogen_flow_rate', 'hydrogen_efficiency']].fillna(0)
 
 if 'produktivitas_pertanian' in df.columns:
@@ -69,6 +69,16 @@ else:
     y_target = (df['solar'].fillna(0) + df['wind'].fillna(0)) * 0.5
 
 X_train, X_test, y_train, y_test = train_test_split(X_features, y_target, test_size=0.2, random_state=42)
+
+# Inisialisasi dan Latih Ulang Random Forest secara Dinamis
+model_klasik = RandomForestRegressor(
+    n_estimators=selected_n_estimators,
+    max_depth=selected_max_depth,
+    min_samples_split=selected_min_samples_split,
+    max_features=selected_max_features,
+    random_state=42
+)
+model_klasik.fit(X_train, y_train)
 
 # Evaluasi Random Forest pada Data Uji secara Riil
 start_inf_rf = time.time()
@@ -110,7 +120,6 @@ potensi_ekonomi_h2 = produksi_h2 * 30000000
 # --- 1. Proyeksi Transisi Energi ---
 st.subheader("Proyeksi Transisi Energi & Kapasitas")
 
-# Dictionary mapping agar pilihan dropdown tampil lebih rapi dan intuitif
 dict_opsi_energi = {
     'solar': 'Solar (PLTS)',
     'wind': 'Wind (PLTB)',
