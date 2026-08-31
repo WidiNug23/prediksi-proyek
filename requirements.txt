@@ -7,3 +7,5 @@ pennylane
 pennylane-lightning
 matplotlib
 scikit-learn
+xgboost
+XGBRegressor
