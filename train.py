@@ -21,11 +21,11 @@ feature_cols = [
 ]
 
 X_features = df[feature_cols].fillna(0)
-y_target = df['target_h2_level'] # Target Level H2 Asli
+y_target = df['target_h2_delta'] # Menggunakan Target Delta H2 sesuai dokumen spesifikasi
 
 tscv = TimeSeriesSplit(n_splits=3)
 
-print("Melakukan Tuning Hyperparameter Random Forest untuk Prediksi Level Hidrogen Atmosferik...")
+print("Melakukan Tuning Hyperparameter Random Forest untuk Target Delta Hidrogen Atmosferik...")
 start_time = time.time()
 
 rf = RandomForestRegressor(random_state=42)

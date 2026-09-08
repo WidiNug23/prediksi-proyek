@@ -21,14 +21,14 @@ df['bulan'] = df['tanggal'].dt.month
 gas_cols = ['h2_ppb', 'ch4_ppb', 'co2_ppm', 'co_ppb']
 df[gas_cols] = df[gas_cols].interpolate(method='linear')
 
-# Target Utama: Level H2 asli (bukan delta) agar MAPE bernilai kecil & wajar
-df['target_h2_level'] = df['h2_ppb']
+# Sesuai Dokumen Spesifikasi: Target Utama adalah Target A (delta-H2 / differencing)
+df['delta_h2'] = df['h2_ppb'].diff()
+df['target_h2_delta'] = df['delta_h2']
 
-# Fitur Prediktor berupa Delta / Selisih & Lag
+# Fitur Prediktor berupa Delta / Selisih & Lag sesuai spesifikasi
 df['delta_co'] = df['co_ppb'].diff()
 df['delta_ch4'] = df['ch4_ppb'].diff()
 df['delta_co2'] = df['co2_ppm'].diff()
-df['delta_h2'] = df['h2_ppb'].diff()
 
 df['rasio_h2_co'] = np.where(df['delta_co'] != 0, df['delta_h2'] / df['delta_co'], 0)
 
@@ -42,4 +42,4 @@ df_clean = df.dropna().reset_index(drop=True)
 
 output_processed = 'data/noaa_processed_data.csv'
 df_clean.to_csv(output_processed, index=False)
-print(f"Preprocessing selesai! Data bersih disimpan ke '{output_processed}' dengan total {len(df_clean)} baris.")
+print(f"Preprocessing selesai! Target disesuaikan ke 'target_h2_delta' (Delta H2). Data bersih disimpan ke '{output_processed}' dengan total {len(df_clean)} baris.")
