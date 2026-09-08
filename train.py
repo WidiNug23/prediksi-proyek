@@ -9,58 +9,47 @@ from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 if not os.path.exists('models'):
     os.makedirs('models')
 
-# Load data hasil gabungan dengan hidrogen
-df = pd.read_csv('data/energy_data_with_hydrogen.csv')
+data_path = 'data/noaa_processed_data.csv'
+if not os.path.exists(data_path):
+    raise FileNotFoundError("Jalankan 'preprocess_data.py' terlebih dahulu untuk menghasilkan data proses.")
 
-# Menambahkan fitur hidrogen baru dari data NLR ke dalam X_features
-X_features = df[['solar', 'wind', 'hydrogen_flow_rate', 'hydrogen_efficiency']].fillna(0)
-y_pertanian = df['produktivitas_pertanian']
+df = pd.read_csv(data_path)
 
-# TimeSeriesSplit untuk validasi data deret waktu
+feature_cols = [
+    'delta_co', 'delta_ch4', 'delta_co2', 'rasio_h2_co', 
+    'h2_lag1', 'h2_lag2', 'sin_bulan', 'cos_bulan'
+]
+
+X_features = df[feature_cols].fillna(0)
+y_target = df['target_h2_level'] # Target Level H2 Asli
+
 tscv = TimeSeriesSplit(n_splits=3)
 
-# --- 1. Tuning Hyperparameter Random Forest Lengkap ---
-print("Melakukan Tuning Hyperparameter Random Forest...")
+print("Melakukan Tuning Hyperparameter Random Forest untuk Prediksi Level Hidrogen Atmosferik...")
 start_time = time.time()
 
 rf = RandomForestRegressor(random_state=42)
 param_grid_rf = {
-    'n_estimators': [100, 200, 300, 500],
-    'max_depth': [5, 10, 15, 20, None],
-    'min_samples_split': [2, 5, 10],    
-    'max_features': ['sqrt', 'log2', 1.0]        
+    'n_estimators': [100, 200, 300],
+    'max_depth': [5, 10, 15, None],
+    'min_samples_split': [2, 5, 10]
 }
 
 grid_rf = GridSearchCV(estimator=rf, param_grid=param_grid_rf, cv=tscv, scoring='neg_mean_squared_error')
-grid_rf.fit(X_features, y_pertanian)
+grid_rf.fit(X_features, y_target)
 
 train_time_rf = time.time() - start_time
 best_rf = grid_rf.best_estimator_
 
-joblib.dump(best_rf, 'models/model_pertanian.pkl')
+joblib.dump(best_rf, 'models/model_hidrogen_rf.pkl')
 print(f"Random Forest Terbaik: {grid_rf.best_params_}")
 print(f"Waktu Training Random Forest: {train_time_rf:.4f} detik")
 
-# --- 2. Pelatihan Model Energi Klasik ---
-targets = ['coal', 'natural_gas', 'hydro_power', 'geothermal', 'solar', 'wind', 'hydrogen_flow_rate', 'hydrogen_efficiency' ]
-for target in targets:
-    if target in df.columns:
-        df_clean = df[['tahun', target]].dropna()
-        if not df_clean.empty:
-            X_tahun = df_clean[['tahun']]
-            y_target = df_clean[target]
-            
-            model_energy = RandomForestRegressor(n_estimators=100, random_state=42)
-            model_energy.fit(X_tahun, y_target)
-            joblib.dump(model_energy, f'models/classic_{target}.pkl')
-            print(f"Model klasik untuk '{target}' berhasil dilatih.")
-
-# --- 3. Konfigurasi Quantum Hybrid (QLSTM) ---
 quantum_config = {
-    'n_qubits': 2,
+    'n_qubits': 4,
     'n_layers': 2,
     'ansatz': 'Hardware-efficient, ring entanglement',
-    'encoding': 'Angle encoding',
+    'encoding': 'Angle encoding [0, pi]',
     'optimizer': 'Adam',
     'learning_rate': 0.01,
     'simulated_inference_time_overhead': 1.45
@@ -68,4 +57,4 @@ quantum_config = {
 weights = np.random.random((quantum_config['n_layers'], quantum_config['n_qubits']))
 joblib.dump({'weights': weights, 'config': quantum_config}, 'models/quantum_weights.pkl')
 
-print("Pelatihan selesai. Model siap digunakan!")
+print("Pelatihan selesai! Seluruh model tersimpan.")
