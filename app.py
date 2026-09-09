@@ -13,7 +13,7 @@ from itertools import product
 st.set_page_config(page_title="Prediksi Hidrogen Atmosferik NOAA BKT", layout="wide")
 
 st.title("Prediksi Mitigasi Hidrogen Atmosferik Berbasis Data NOAA Bukit Kototabang")
-st.markdown("Evaluasi Performa Model *Random Forest*, *XGBoost*, dan *Quantum Hybrid (QLSTM)* terhadap Target Differencing H2 (`delta_h2`).")
+# st.markdown("Evaluasi Performa Model *Random Forest*, *XGBoost*, dan *Quantum Hybrid (QLSTM)* terhadap Target Differencing H2 (`delta_h2`).")
 
 data_path = 'data/noaa_processed_data.csv'
 if not os.path.exists(data_path):
@@ -203,6 +203,7 @@ with col1:
     st.metric("RMSE", f"{rmse_rf:.3f} ppb")
     st.metric("MAPE", f"{mape_rf:.2f} %")
     st.metric("Waktu Latih / Inferensi", f"{time_train_rf:.1f}ms / {time_inf_rf}ms")
+    st.markdown(f"**Hyperparameter:**<br>• n_estimators: `{selected_n_estimators}`<br>• max_depth: `{selected_max_depth}`<br>• min_samples_split: `{selected_min_samples_split}`", unsafe_allow_html=True)
 
 with col2:
     st.markdown("### Quantum Hybrid (QLSTM)")
@@ -211,6 +212,7 @@ with col2:
     st.metric("RMSE", f"{rmse_quantum:.3f} ppb")
     st.metric("MAPE", f"{mape_quantum:.2f} %")
     st.metric("Waktu Latih / Inferensi", f"{time_train_quantum:.1f}ms / {time_inf_quantum:.1f}ms")
+    st.markdown(f"**Hyperparameter:**<br>• Qubits: `{selected_n_qubits}`<br>• Layers: `{selected_n_layers}`<br>• Ansatz: `{selected_ansatz}`<br>• Optimizer: `{selected_optimizer}`<br>• LR: `{selected_lr}`", unsafe_allow_html=True)
 
 with col3:
     st.markdown("### XGBoost")
@@ -219,6 +221,7 @@ with col3:
     st.metric("RMSE", f"{rmse_xgb:.3f} ppb")
     st.metric("MAPE", f"{mape_xgb:.2f} %")
     st.metric("Waktu Latih / Inferensi", f"{time_train_xgb:.1f}ms / {time_inf_xgb}ms")
+    # st.markdown(f"**Hyperparameter:**<br>• n_estimators: `100`<br>• learning_rate: `0.1`<br>• random_state: `42`", unsafe_allow_html=True)
 
 st.subheader("4. Uji Signifikansi Statistik (Paired T-Test)")
 col_s1, col_s2 = st.columns(2)
