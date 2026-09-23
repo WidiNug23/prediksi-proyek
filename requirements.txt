@@ -7,3 +7,4 @@ pennylane
 pennylane-lightning
 matplotlib
 xgboost
+openpyxl
